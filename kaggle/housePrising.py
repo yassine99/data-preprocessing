@@ -40,15 +40,6 @@ train,target=train_fl.nextChunk(chunk_size=25000)
 test,_=test_fl.nextChunk(chunk_size=25000)
 
 
-
-################################# Linear
-print "training LinearRegression"
-regr = linear_model.LinearRegression()
-regr.fit(train, target)
-train_pred_lr=regr.predict(train)
-test_pred_lr=regr.predict(test)
-
-
 ########################### NN
 fcl=[train.shape[1],128,256,64]
 model = Sequential()
@@ -59,10 +50,10 @@ model.add(Dense(1, init='normal'))
 model.compile(loss='mean_squared_error', optimizer='Adagrad')
 
 model.fit(train, target,epochs=1000)
-train_pred_nn=regr.predict(train)
-test_pred_nn=regr.predict(test)
+train_pred_nn=model.predict(train)
+test_pred_nn=model.predict(test)
 
-"""
+
 ########################### xgb
 
 print "training XGB"
@@ -83,7 +74,7 @@ regr.fit(train, target)
 train_pred_xgb = regr.predict(train)
 test_pred_xgb = regr.predict(test)
 
-"""
+
 ################################FS
 
 print "Features selection"
@@ -93,7 +84,7 @@ forest = ExtraTreesClassifier(n_estimators=250,
 forest.fit(train, target)
 importances = forest.feature_importances_
 
-threshold=0.001
+threshold=0.005
 
 restricted=[]
 for i in range(len(importances)):
@@ -101,25 +92,16 @@ for i in range(len(importances)):
 		restricted.append(i)
 
 
-x=np.concatenate((train[:,restricted], train_pred_lr.reshape((train.shape[0],1))), axis=1)
-t=np.concatenate((test[:,restricted], test_pred_lr.reshape((test.shape[0],1))), axis=1)
-
-
-
-
-#x=np.concatenate((x, np.array(train_pred_xgb).reshape((x.shape[0],1))), axis=1)
-#t=np.concatenate((t, np.array(test_pred_xgb).reshape((t.shape[0],1))), axis=1)
-
+x=np.concatenate((train[:,restricted], train_pred_xgb.reshape((train.shape[0],1))), axis=1)
+t=np.concatenate((test[:,restricted], test_pred_xgb.reshape((test.shape[0],1))), axis=1)
 x=np.concatenate((x, np.array(train_pred_nn).reshape((x.shape[0],1))), axis=1)
 t=np.concatenate((t, np.array(test_pred_nn).reshape((t.shape[0],1))), axis=1)
 
 
-print "new shapes :"
-print x.shape
 
 
 
-############################## Restricted
+############################## Restricted xgb
 
 print "training XGB"
 regr = xgb.XGBRegressor(
@@ -128,15 +110,18 @@ regr = xgb.XGBRegressor(
                  learning_rate=0.05,
                  max_depth=6,
                  min_child_weight=1.5,
-                 n_estimators=2000,                                                                  
+                 n_estimators=1200,                                                                  
                  reg_alpha=0.9,
                  reg_lambda=0.6,
                  subsample=0.2,
                  seed=42)
 
-regr.fit(x, target)
 
+regr.fit(x, target)
 test_pred_xgb = regr.predict(t)
+
+
+
 
 
 
